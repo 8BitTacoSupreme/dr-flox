@@ -1,0 +1,1778 @@
+schema-version = "1.10.0"
+
+#
+# =============================================================================
+# INSTALL SECTION
+# =============================================================================
+# NOTE: figlet is intentionally OMITTED - users discover they need it in Ritual I
+#
+
+[install]
+gum.pkg-path = "gum"
+python312.pkg-path = "python312"
+curl.pkg-path = "curl"
+jq.pkg-path = "jq"
+figlet.pkg-path = "figlet"
+# figlet intentionally omitted - Ritual I puzzle
+
+#
+# =============================================================================
+# VARS SECTION
+# =============================================================================
+#
+
+[vars]
+INITIATE_NAME = "Jeremy"
+CHALLENGE_NAME = "Dr. Flox Challenge"
+ORACLE_PORT = "8666"
+SIGIL_SALT_1 = "miskatonic-valley-tech-1928"
+SIGIL_SALT_2 = "fractured-monorepo-1932"
+SIGIL_SALT_3 = "elder-bindings-composed-1936"
+SIGIL_SALT_4 = "transmutation-forge-1940"
+SIGIL_SALT_5 = "orakle-awakening-1944"
+SIGIL_SALT_6 = "ascension-protocol-1948"
+VICTORY_SECRET = "declarative-order-seal-2024"
+
+#
+# =============================================================================
+# HOOK SECTION
+# =============================================================================
+# Creates orakle service, grimoire page source, and progress file on activation
+#
+
+[hook]
+on-activate = '''
+# Preserve base cache path for layered environments (Ritual II/III)
+export FLOX_DRFLOX_CACHE="$FLOX_ENV_CACHE"
+
+# Create src directory if needed
+mkdir -p "$FLOX_ENV_PROJECT/src"
+
+# Create grimoire_page.sh if it doesn't exist (idempotent)
+if [[ ! -f "$FLOX_ENV_PROJECT/src/grimoire_page.sh" ]]; then
+  cat > "$FLOX_ENV_PROJECT/src/grimoire_page.sh" << 'GRIMOIRE_SH_EOF'
+#!/usr/bin/env bash
+# Grimoire Page - Forged in the Declarative Crucible
+# Built with: flox build grimoire-page
+
+PURPLE="\033[0;35m"
+CYAN="\033[0;36m"
+GREEN="\033[0;32m"
+YELLOW="\033[1;33m"
+NC="\033[0m"
+
+INITIATE="${INITIATE_NAME:-UNNAMED_INITIATE}"
+
+echo ""
+echo -e "${PURPLE}+==============================================================+${NC}"
+echo -e "${PURPLE}|${NC}   ${YELLOW}GRIMOIRE PAGE${NC} - ${CYAN}THE TRANSMUTATION${NC}                          ${PURPLE}|${NC}"
+echo -e "${PURPLE}+==============================================================+${NC}"
+echo -e "${PURPLE}|${NC}                                                              ${PURPLE}|${NC}"
+echo -e "${PURPLE}|${NC}  This page was forged in the Declarative Crucible            ${PURPLE}|${NC}"
+echo -e "${PURPLE}|${NC}  by the ancient rites of ${CYAN}flox build${NC}.                        ${PURPLE}|${NC}"
+echo -e "${PURPLE}|${NC}                                                              ${PURPLE}|${NC}"
+echo -e "${PURPLE}|${NC}  Initiate: ${GREEN}${INITIATE}${NC}"
+echo -e "${PURPLE}|${NC}                                                              ${PURPLE}|${NC}"
+echo -e "${PURPLE}|${NC}  ${YELLOW}\"The artifact is manifest. The transmutation complete.\"${NC}    ${PURPLE}|${NC}"
+echo -e "${PURPLE}|${NC}                                                              ${PURPLE}|${NC}"
+echo -e "${PURPLE}+==============================================================+${NC}"
+echo ""
+GRIMOIRE_SH_EOF
+  chmod +x "$FLOX_ENV_PROJECT/src/grimoire_page.sh"
+fi
+
+# Create cache directory if needed
+mkdir -p "$FLOX_ENV_CACHE"
+
+# Create Orakle service script (idempotent)
+if [[ ! -f "$FLOX_ENV_CACHE/orakle_service.py" ]]; then
+  cat > "$FLOX_ENV_CACHE/orakle_service.py" << 'ORACLE_EOF'
+#!/usr/bin/env python3
+"""Dr. Flox Challenge - The Sigil Orakle
+A dark and ancient service that validates ritual sigils and guards the path to mastery."""
+
+import argparse
+import base64
+import hashlib
+import hmac
+import json
+import os
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from datetime import datetime
+
+SIGIL_SALTS = {
+    1: "miskatonic-valley-tech-1928",
+    2: "fractured-monorepo-1932",
+    3: "elder-bindings-composed-1936",
+    4: "transmutation-forge-1940",
+    5: "orakle-awakening-1944",
+    6: "ascension-protocol-1948",
+}
+
+SIGIL_SUFFIXES = {
+    1: "the-declarative-abyss-awaits",
+    2: "realms-layered-and-bound",
+    3: "permanently-woven",
+    4: "artifacts-manifested",
+    5: "services-awakened",
+    6: "mastery-achieved",
+}
+
+RITUAL_NAMES = {
+    1: "The Summoning",
+    2: "The Layering",
+    3: "The Binding",
+    4: "The Transmutation",
+    5: "The Awakening",
+    6: "The Ascension",
+}
+
+CLUES = {
+    1: "\n\033[0;35m\u26e7\u26e7\u26e7 THE ORAKLE SPEAKS \u26e7\u26e7\u26e7\033[0m\n\nYour first sigil has been verified.\nThe declarative substrate acknowledges you.\n\n\033[1;33mNEXT: Ritual II - The Layering\033[0m\n\n  The Elder Libraries hold power beyond this realm.\n  Layer their wisdom upon your environment:\n\n    \033[0;36mflox activate -r flox/elder-library\033[0m\n\n  Then invoke: \033[0;36melder-whisper\033[0m\n  Then prove it: \033[0;36mvalidate-02\033[0m\n\n  The realms can be stacked. The ancients will follow.\n\n\033[0;35m\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\033[0m\n",
+    2: "\n\033[0;35m\u26e7\u26e7\u26e7 THE ORAKLE SPEAKS \u26e7\u26e7\u26e7\033[0m\n\nYour second sigil burns true.\nYou have walked between realms.\n\nBut layering is \033[1;33mEPHEMERAL\033[0m.\nWhen you exit, the bond dissolves.\n\n\033[1;33mNEXT: Ritual III - The Binding\033[0m\n\n  To make the bond PERMANENT, compose with [include]:\n\n    \033[0;36mflox edit\033[0m\n\n  Add to the manifest:\n    \033[0;36m[include]\033[0m\n    \033[0;36menvironments = [{ remote = \"flox/elder-library\" }]\033[0m\n\n  Also add your name and a greeting function.\n  The ritual instructions will guide you.\n\n    \033[0;36mritual-03\033[0m\n    \033[0;36mvalidate-03\033[0m\n\n\033[0;35m\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\033[0m\n",
+    3: "\n\033[0;35m\u26e7\u26e7\u26e7 THE ORAKLE SPEAKS \u26e7\u26e7\u26e7\033[0m\n\nThe realms are permanently woven.\nThe Elder Libraries answer to your will alone.\n\n\033[1;33mNEXT: Ritual IV - The Transmutation\033[0m\n\n  The Transmutation Forge awaits.\n  Examine the grimoire page source, then forge it:\n\n    \033[0;36mcat src/grimoire_page.sh\033[0m\n    \033[0;36mflox build grimoire-page\033[0m\n    \033[0;36m./result-grimoire-page/bin/grimoire-page\033[0m\n    \033[0;36mvalidate-04\033[0m\n\n  The artifact must bear your name.\n\n\033[0;35m\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\033[0m\n",
+    4: "\n\033[0;35m\u26e7\u26e7\u26e7 THE ORAKLE SPEAKS \u26e7\u26e7\u26e7\033[0m\n\nThe artifact has been transmuted.\nYour grimoire page exists in the material plane.\n\n\033[1;33mNEXT: Ritual V - The Awakening\033[0m\n\n  The Orakle itself is a service, already defined in the manifest.\n  Awaken the services:\n\n    \033[0;36mflox services start\033[0m\n    \033[0;36mcurl -s http://localhost:$ORACLE_PORT/health | jq .\033[0m\n    \033[0;36mvalidate-05\033[0m\n\n  The Orakle breathes. Ask and it shall answer.\n\n\033[0;35m\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\033[0m\n",
+    5: "\n\033[0;35m\u26e7\u26e7\u26e7 THE ORAKLE SPEAKS \u26e7\u26e7\u26e7\033[0m\n\nThe Orakle breathes. The services are alive.\nYou stand at the threshold of mastery.\n\n\033[1;33mNEXT: Ritual VI - The Ascension\033[0m\n\n  Ascend to the Declarative Order:\n\n    \033[0;36mflox auth status\033[0m\n    \033[0;36mflox publish grimoire-page\033[0m\n    \033[0;36mflox push\033[0m\n    \033[0;36mclaim-victory <your-username>/dr-flox\033[0m\n    \033[0;36mvalidate-06\033[0m\n\n  Publish your artifact. Push your realm. Claim your place.\n\n\033[0;35m\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\033[0m\n",
+    6: "\n\033[0;35m\u26e7\u26e7\u26e7 THE ORAKLE SPEAKS \u26e7\u26e7\u26e7\033[0m\n\nAll six sigils burn in harmony.\nThe Declarative Order recognizes you.\n\n\033[1;32mYou have achieved MASTERY.\033[0m\n\nRun \033[0;36mclaim-victory\033[0m to receive your certificate.\n\n\033[0;35m\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\033[0m\n",
+}
+
+STATE_FILE = os.path.join(os.environ.get("FLOX_ENV_CACHE", "/tmp"), "orakle_state.json")
+
+def load_state():
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            pass
+    return {"users": {}}
+
+def save_state(state):
+    with open(STATE_FILE, "w") as f:
+        json.dump(state, f, indent=2)
+
+def compute_sigil(username, ritual):
+    salt = SIGIL_SALTS.get(ritual)
+    suffix = SIGIL_SUFFIXES.get(ritual)
+    if not salt or not suffix:
+        return None
+    return hashlib.sha256(f"{username}:{salt}:{suffix}".encode()).hexdigest()[:16]
+
+def generate_certificate(username, sigils):
+    name = username.upper().center(44)
+    lines = []
+    for i in range(1, 7):
+        s = sigils.get(str(i), sigils.get(i, "................"))
+        rname = RITUAL_NAMES.get(i, f"Ritual {i}")
+        lines.append(f"     Ritual {i} ({rname:20s}): \033[0;32m{s}\033[0;35m")
+    sigil_block = "\n".join(lines)
+    return f"""
+\033[0;35m+========================================================================+
+|   \u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7   |
+|\033[1;33m              CERTIFICATE OF INITIATION\033[0;35m                                |
+|\033[0;36m                THE DECLARATIVE ORDER\033[0;35m                                  |
+|   \u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7   |
+|   This certifies that                                                |
+|  \033[1;32m{name}\033[0;35m  |
+|   has completed all six rituals of the Dr. Flox Challenge            |
+|   and is hereby recognized as an ADEPT of the Declarative Order.     |
+|   ----------------------------------------------------------------   |
+|   RITUAL SIGILS:                                                     |
+{sigil_block}
+|   ----------------------------------------------------------------   |
+|   You have proven mastery of:                                        |
+|     - Package installation        - Environment layering             |
+|     - Environment composition     - Building artifacts               |
+|     - Service management          - Publishing & sharing             |
+|\033[1;33m   The Hermetic Polyglot Monorepo acknowledges you.\033[0;35m                   |
+|   \u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7   |
++========================================================================+\033[0m
+"""
+
+class OrakleHandler(BaseHTTPRequestHandler):
+    def log_message(self, fmt, *args):
+        if args:
+            print(f"[Orakle] {args[0]}")
+
+    def send_json(self, data, status=200):
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(json.dumps(data, indent=2).encode())
+
+    def do_GET(self):
+        if self.path == "/health":
+            state = load_state()
+            self.send_json({
+                "status": "alive",
+                "message": "The Orakle listens...",
+                "orakle": "Dr. Flox Sigil Orakle",
+                "rituals": 6,
+                "active_initiates": len(state.get("users", {})),
+                "timestamp": datetime.utcnow().isoformat()
+            })
+        elif self.path.startswith("/progress"):
+            from urllib.parse import urlparse, parse_qs
+            qs = parse_qs(urlparse(self.path).query)
+            user = qs.get("user", ["unknown"])[0]
+            state = load_state()
+            user_state = state.get("users", {}).get(user, {})
+            self.send_json({
+                "user": user,
+                "sigils": user_state.get("sigils", {}),
+                "completed": len(user_state.get("sigils", {})),
+                "total": 6
+            })
+        else:
+            self.send_json({
+                "error": "The Orakle does not understand this invocation",
+                "endpoints": ["GET /health", "GET /progress?user=NAME", "POST /validate", "POST /complete"]
+            }, 404)
+
+    def do_POST(self):
+        try:
+            body = self.rfile.read(int(self.headers.get("Content-Length", 0))).decode()
+            data = json.loads(body) if body else {}
+        except (json.JSONDecodeError, ValueError):
+            data = {}
+
+        if self.path == "/validate":
+            sigil = data.get("sigil", "").strip().lower()
+            ritual = data.get("ritual")
+            user = data.get("user", "unknown")
+
+            if not sigil or ritual is None:
+                return self.send_json({"valid": False, "error": "Missing sigil or ritual number"}, 400)
+
+            try:
+                ritual = int(ritual)
+            except (ValueError, TypeError):
+                return self.send_json({"valid": False, "error": "Invalid ritual number"}, 400)
+
+            if ritual < 1 or ritual > 6:
+                return self.send_json({"valid": False, "error": f"Unknown ritual: {ritual}"}, 400)
+
+            expected = compute_sigil(user, ritual)
+            if expected and sigil == expected.lower():
+                state = load_state()
+                if user not in state["users"]:
+                    state["users"][user] = {"sigils": {}, "started_at": datetime.utcnow().isoformat()}
+                state["users"][user]["sigils"][str(ritual)] = sigil
+                save_state(state)
+                self.send_json({
+                    "valid": True,
+                    "ritual": ritual,
+                    "ritual_name": RITUAL_NAMES.get(ritual, "Unknown"),
+                    "user": user,
+                    "clue": CLUES.get(ritual, ""),
+                    "progress": f"{len(state['users'][user]['sigils'])}/6"
+                })
+            else:
+                self.send_json({
+                    "valid": False,
+                    "error": f"The sigil does not resonate for {user}",
+                    "hint": "Verify your username matches $USER and the ritual number is correct"
+                })
+
+        elif self.path == "/complete":
+            user = data.get("user", "unknown")
+            env_ref = data.get("env_ref", "")
+            state = load_state()
+            user_state = state.get("users", {}).get(user, {})
+            user_sigils = user_state.get("sigils", {})
+
+            if len(user_sigils) < 6:
+                missing = [str(i) for i in range(1, 7) if str(i) not in user_sigils]
+                return self.send_json({
+                    "success": False,
+                    "error": f"Not all rituals complete. Missing: {', '.join(missing)}",
+                    "completed": len(user_sigils),
+                    "total": 6
+                })
+
+            completed_at = datetime.utcnow().isoformat()
+            state["users"][user]["completed_at"] = completed_at
+            save_state(state)
+
+            # Generate verifiable completion token
+            floxhub_user = data.get("floxhub_user", "")
+            payload = json.dumps({
+                "floxhub_user": floxhub_user,
+                "env_ref": env_ref,
+                "initiate_name": user,
+                "sigils": user_sigils,
+                "completed_at": completed_at
+            }, separators=(",", ":"))
+            payload_b64 = base64.b64encode(payload.encode()).decode()
+            secret = os.environ.get("VICTORY_SECRET", "declarative-order-seal-2024")
+            signature = hmac.new(secret.encode(), payload_b64.encode(), hashlib.sha256).hexdigest()
+            token = f"{payload_b64}.{signature}"
+
+            cert = generate_certificate(user, user_sigils)
+            self.send_json({
+                "success": True,
+                "certificate": cert,
+                "token": token,
+                "user": user,
+                "message": "The Declarative Order recognizes you."
+            })
+
+        else:
+            self.send_json({"error": "Unknown ritual endpoint"}, 404)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Dr. Flox Sigil Orakle")
+    parser.add_argument("--port", type=int, default=8666)
+    args = parser.parse_args()
+    print(f"\n\033[0;35m\u26e7\u26e7\u26e7 THE SIGIL ORAKLE AWAKENS \u26e7\u26e7\u26e7\033[0m")
+    print(f"  Listening on http://localhost:{args.port}\n")
+    HTTPServer(("127.0.0.1", args.port), OrakleHandler).serve_forever()
+ORACLE_EOF
+fi
+
+# Create progress tracking file (idempotent)
+if [[ ! -f "$FLOX_ENV_CACHE/progress.json" ]]; then
+  cat > "$FLOX_ENV_CACHE/progress.json" << 'PROGRESS_EOF'
+{
+  "rituals": {
+    "01_summoning": false,
+    "02_layering": false,
+    "03_binding": false,
+    "04_transmutation": false,
+    "05_awakening": false,
+    "06_ascension": false
+  },
+  "sigils": {
+    "01_summoning": null,
+    "02_layering": null,
+    "03_binding": null,
+    "04_transmutation": null,
+    "05_awakening": null,
+    "06_ascension": null
+  },
+  "started_at": null,
+  "completed_at": null,
+  "initiate_name": null
+}
+PROGRESS_EOF
+  # Record start time
+  local start_time
+  start_time=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  if command -v jq &>/dev/null; then
+    local tmp
+    tmp=$(mktemp)
+    jq --arg t "$start_time" '.started_at = $t' "$FLOX_ENV_CACHE/progress.json" > "$tmp" && mv "$tmp" "$FLOX_ENV_CACHE/progress.json"
+  fi
+fi
+'''
+
+#
+# =============================================================================
+# PROFILE SECTION
+# =============================================================================
+# All user-facing functions for the Dr. Flox Challenge
+#
+
+[profile]
+common = '''
+# =============================================================================
+# INTERNAL HELPER FUNCTIONS
+# =============================================================================
+
+_get_progress_cache() {
+  echo "${FLOX_DRFLOX_CACHE:-$FLOX_ENV_CACHE}"
+}
+
+_compute_sha256() {
+  local input="$1"
+  if command -v shasum &>/dev/null; then
+    echo -n "$input" | shasum -a 256 | cut -c1-16
+  elif command -v sha256sum &>/dev/null; then
+    echo -n "$input" | sha256sum | cut -c1-16
+  else
+    echo "no-hash-tool"
+  fi
+}
+
+_mark_complete() {
+  local ritual="$1"
+  local sigil="${2:-}"
+  local cache_path
+  cache_path=$(_get_progress_cache)
+  if [[ ! -f "$cache_path/progress.json" ]]; then
+    gum style --foreground 214 "Warning: No progress file found" >&2
+    return 1
+  fi
+  if ! command -v jq &>/dev/null; then
+    gum style --foreground 214 "Warning: jq required for progress tracking" >&2
+    return 1
+  fi
+  local tmp
+  tmp=$(mktemp)
+  jq --arg r "$ritual" --arg s "$sigil" --arg n "${INITIATE_NAME:-${USER:-unknown}}" \
+    '.rituals[$r] = true | .sigils[$r] = $s | .initiate_name = $n' \
+    "$cache_path/progress.json" > "$tmp" && mv "$tmp" "$cache_path/progress.json"
+}
+
+_is_complete() {
+  local ritual="$1"
+  local cache_path
+  cache_path=$(_get_progress_cache)
+  if [[ -f "$cache_path/progress.json" ]] && command -v jq &>/dev/null; then
+    local result
+    result=$(jq -r --arg r "$ritual" '.rituals[$r] // false' "$cache_path/progress.json")
+    [[ "$result" == "true" ]]
+  else
+    return 1
+  fi
+}
+
+_get_completed_count() {
+  local cache_path
+  cache_path=$(_get_progress_cache)
+  if [[ -f "$cache_path/progress.json" ]] && command -v jq &>/dev/null; then
+    jq '[.rituals | to_entries[] | select(.value == true)] | length' "$cache_path/progress.json"
+  else
+    echo "0"
+  fi
+}
+
+_orakle_url() {
+  echo "http://localhost:${ORACLE_PORT:-8666}"
+}
+
+_pentagram_border() {
+  local PURPLE="\033[0;35m" NC="\033[0m"
+  echo -e "${PURPLE}\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7\u26e7${NC}"
+}
+
+_orakle_is_running() {
+  curl -s "$(_orakle_url)/health" &>/dev/null
+}
+
+_submit_to_orakle() {
+  local ritual="$1"
+  local sigil="$2"
+  local user="${INITIATE_NAME:-${USER:-unknown}}"
+  local response
+  response=$(curl -s -X POST "$(_orakle_url)/validate" \
+    -H "Content-Type: application/json" \
+    -d "{\"sigil\": \"$sigil\", \"ritual\": $ritual, \"user\": \"$user\"}" 2>/dev/null)
+  if [[ -n "$response" ]]; then
+    local valid
+    valid=$(echo "$response" | jq -r '.valid // false' 2>/dev/null)
+    if [[ "$valid" == "true" ]]; then
+      local clue
+      clue=$(echo "$response" | jq -r '.clue // ""' 2>/dev/null)
+      if [[ -n "$clue" ]]; then
+        echo -e "$clue"
+      fi
+    else
+      local err
+      err=$(echo "$response" | jq -r '.error // "Unknown error"' 2>/dev/null)
+      gum style --foreground 196 "  Orakle: $err"
+    fi
+  fi
+}
+
+# =============================================================================
+# BANNER & PROGRESS DISPLAY
+# =============================================================================
+
+grimoire-banner() {
+  local completed
+  completed=$(_get_completed_count)
+
+  gum style \
+    --border double \
+    --border-foreground 129 \
+    --padding "1 2" \
+    --margin "1" \
+    "$(gum style --foreground 129 --bold '  DR. FLOX CHALLENGE  ')" \
+    "$(gum style --foreground 245 '  THE DECLARATIVE ORDER  ')" \
+    "" \
+    "A Lovecraftian journey through Flox" \
+    "Progress: $completed/6 rituals completed" \
+    "" \
+    "Type $(gum style --foreground 129 'grimoire') to open the Book of Shadows"
+}
+
+show-progress() {
+  echo ""
+  gum style --foreground 129 --bold "Ritual Progress"
+  echo ""
+
+  local rituals=("01_summoning:I   The Summoning" "02_layering:II  The Layering" "03_binding:III The Binding" "04_transmutation:IV  The Transmutation" "05_awakening:V   The Awakening" "06_ascension:VI  The Ascension")
+
+  for item in "${rituals[@]}"; do
+    local key="${item%%:*}"
+    local name="${item#*:}"
+    if _is_complete "$key"; then
+      gum style --foreground 46 "  [\u26e7] Ritual $name"
+    else
+      gum style --foreground 245 "  [ ] Ritual $name"
+    fi
+  done
+  echo ""
+}
+
+show-state() {
+  echo ""
+  gum style --foreground 129 --bold "Challenge State"
+  echo ""
+
+  local cache_path
+  cache_path=$(_get_progress_cache)
+
+  if [[ ! -f "$cache_path/progress.json" ]]; then
+    gum style --foreground 196 "  No state file found at: $cache_path/progress.json"
+    return 1
+  fi
+
+  echo "  File: $cache_path/progress.json"
+  echo ""
+
+  if command -v jq &>/dev/null; then
+    jq '.' "$cache_path/progress.json" | sed 's/^/  /'
+  else
+    cat "$cache_path/progress.json" | sed 's/^/  /'
+  fi
+  echo ""
+}
+
+reset-progress() {
+  local cache_path
+  cache_path=$(_get_progress_cache)
+  if [[ -f "$cache_path/progress.json" ]]; then
+    cp "$cache_path/progress.json" "$cache_path/progress.json.bak"
+    gum style --foreground 245 "Backed up to progress.json.bak"
+
+    cat > "$cache_path/progress.json" << 'RESET_EOF'
+{
+  "rituals": {
+    "01_summoning": false,
+    "02_layering": false,
+    "03_binding": false,
+    "04_transmutation": false,
+    "05_awakening": false,
+    "06_ascension": false
+  },
+  "sigils": {
+    "01_summoning": null,
+    "02_layering": null,
+    "03_binding": null,
+    "04_transmutation": null,
+    "05_awakening": null,
+    "06_ascension": null
+  },
+  "started_at": null,
+  "completed_at": null,
+  "initiate_name": null
+}
+RESET_EOF
+    gum style --foreground 214 "Progress has been reset! The slate is clean."
+  fi
+}
+
+# =============================================================================
+# INTERACTIVE MENU - BOOK OF SHADOWS
+# =============================================================================
+
+grimoire() {
+  local completed
+  completed=$(_get_completed_count)
+
+  echo ""
+  gum style \
+    --border rounded \
+    --border-foreground 129 \
+    --padding "1 2" \
+    "$(gum style --foreground 129 --bold 'BOOK OF SHADOWS')" \
+    "$(gum style --foreground 245 "Progress: $completed/6 rituals")"
+  echo ""
+
+  local r01 r02 r03 r04 r05 r06
+  if _is_complete "01_summoning"; then r01=$'\u26e7 Ritual I:   The Summoning'; else r01="  Ritual I:   The Summoning"; fi
+  if _is_complete "02_layering"; then r02=$'\u26e7 Ritual II:  The Layering'; else r02="  Ritual II:  The Layering"; fi
+  if _is_complete "03_binding"; then r03=$'\u26e7 Ritual III: The Binding'; else r03="  Ritual III: The Binding"; fi
+  if _is_complete "04_transmutation"; then r04=$'\u26e7 Ritual IV:  The Transmutation'; else r04="  Ritual IV:  The Transmutation"; fi
+  if _is_complete "05_awakening"; then r05=$'\u26e7 Ritual V:   The Awakening'; else r05="  Ritual V:   The Awakening"; fi
+  if _is_complete "06_ascension"; then r06=$'\u26e7 Ritual VI:  The Ascension'; else r06="  Ritual VI:  The Ascension"; fi
+
+  local choice
+  choice=$(gum choose \
+    --cursor.foreground 129 \
+    --item.foreground 129 \
+    --selected.foreground 129 \
+    "$r01" \
+    "$r02" \
+    "$r03" \
+    "$r04" \
+    "$r05" \
+    "$r06" \
+    "════════════════════════════" \
+    "Show Progress" \
+    "Show State" \
+    "Reset Progress" \
+    "Exit Grimoire")
+
+  case "$choice" in
+    *"Ritual I:"*) ritual-01 ;;
+    *"Ritual II:"*) ritual-02 ;;
+    *"Ritual III:"*) ritual-03 ;;
+    *"Ritual IV:"*) ritual-04 ;;
+    *"Ritual V:"*) ritual-05 ;;
+    *"Ritual VI:"*) ritual-06 ;;
+    "Show Progress") show-progress ;;
+    "Show State") show-state ;;
+    "Reset Progress") reset-progress ;;
+    "Exit Grimoire") return 0 ;;
+  esac
+}
+
+# =============================================================================
+# RITUAL I: THE SUMMONING (Pull + Install)
+# =============================================================================
+
+ritual-01() {
+  echo ""
+  gum style \
+    --border rounded \
+    --border-foreground 129 \
+    --padding "1 2" \
+    "$(gum style --foreground 129 --bold 'RITUAL I: THE SUMMONING')" \
+    "$(gum style --foreground 245 'Pull, Install, and Inscribe')"
+  echo ""
+
+  gum style --foreground 255 "The Binding Circle is incomplete. You must:"
+  echo ""
+  echo "  $(gum style --foreground 129 '1.') Install the Mark of ASCII (figlet):"
+  echo "     $(gum style --foreground 245 'flox install figlet')"
+  echo ""
+  echo "  $(gum style --foreground 129 '2.') Inscribe your sigil:"
+  echo "     $(gum style --foreground 245 'inscribe-sigil')"
+  echo ""
+  echo "  $(gum style --foreground 129 '3.') Validate the ritual:"
+  echo "     $(gum style --foreground 245 'validate-01')"
+  echo ""
+}
+
+# =============================================================================
+# RITUAL II: THE LAYERING (Runtime Layer)
+# =============================================================================
+
+ritual-02() {
+  echo ""
+  gum style \
+    --border rounded \
+    --border-foreground 129 \
+    --padding "1 2" \
+    "$(gum style --foreground 129 --bold 'RITUAL II: THE LAYERING')" \
+    "$(gum style --foreground 245 'Layer the Elder Libraries at runtime')"
+  echo ""
+
+  gum style --foreground 255 "The Elder Libraries hold ancient power. Layer them upon your realm:"
+  echo ""
+  echo "  $(gum style --foreground 129 '1.') While inside your dr-flox environment, layer the Elder Library:"
+  echo "     $(gum style --foreground 245 'flox activate -r flox/elder-library')"
+  echo ""
+  echo "  $(gum style --foreground 129 '2.') Invoke the elder wisdom:"
+  echo "     $(gum style --foreground 245 'elder-whisper')"
+  echo ""
+  echo "  $(gum style --foreground 129 '3.') Validate the ritual:"
+  echo "     $(gum style --foreground 245 'validate-02')"
+  echo ""
+
+  gum style --foreground 214 "Note: Runtime layering (-r flag) is ephemeral."
+  gum style --foreground 214 "When you exit the layer, those tools vanish."
+  echo ""
+}
+
+# =============================================================================
+# RITUAL III: THE BINDING (Compose + Hooks/Vars)
+# =============================================================================
+
+ritual-03() {
+  echo ""
+  gum style \
+    --border rounded \
+    --border-foreground 129 \
+    --padding "1 2" \
+    "$(gum style --foreground 129 --bold 'RITUAL III: THE BINDING')" \
+    "$(gum style --foreground 245 'Compose environments permanently')"
+  echo ""
+
+  local cache_path
+  cache_path=$(_get_progress_cache)
+
+  # Check if binding was already inscribed (needs re-activate)
+  if [[ -f "$cache_path/binding_inscribed" ]]; then
+    gum style --foreground 46 "The binding was already inscribed."
+    echo ""
+    echo "  Re-activate to seal it, then validate:"
+    echo "     $(gum style --foreground 245 'exit')"
+    echo "     $(gum style --foreground 245 'flox activate')"
+    echo "     $(gum style --foreground 245 'validate-03')"
+    echo ""
+    return 0
+  fi
+
+  gum style --foreground 255 "To make the Elder Libraries permanent, bind them into your manifest."
+  echo ""
+
+  # Prompt for initiate name
+  local name
+  echo "  Enter your name, initiate..."
+  name=$(gum input --prompt "  > " --prompt.foreground 129 --placeholder "")
+  if [[ -z "$name" ]]; then
+    gum style --foreground 196 "  The ritual requires a name. Try again."
+    return 1
+  fi
+
+  echo ""
+  gum spin --spinner dot --title "Inscribing the binding..." -- sleep 2
+
+  local manifest="${FLOX_ENV_PROJECT:-.}/.flox/env/manifest.toml"
+
+  # Use Python to safely modify the manifest
+  local pyscript
+  pyscript=$(mktemp /tmp/bind_XXXXXX.py)
+  cat > "$pyscript" << 'PYEOF'
+import sys
+
+path = sys.argv[1]
+name = sys.argv[2]
+
+with open(path) as f:
+    content = f.read()
+
+lines = content.split("\n")
+new_lines = []
+tq = chr(39) * 3
+in_profile = False
+profile_closed = False
+include_added = False
+initiate_added = False
+greeting_added = False
+
+for i, line in enumerate(lines):
+    # Add INITIATE_NAME after [vars] header
+    if line.strip() == "[vars]" and not initiate_added:
+        new_lines.append(line)
+        new_lines.append(f'INITIATE_NAME = "{name}"')
+        initiate_added = True
+        continue
+
+    # Track [profile] section
+    if line.strip() == "[profile]":
+        in_profile = True
+
+    # Insert dark-greeting before closing triple-quote of profile common
+    if in_profile and not profile_closed and line.strip() == tq:
+        new_lines.append("")
+        new_lines.append("dark-greeting() {")
+        new_lines.append('  echo "The shadows welcome $INITIATE_NAME to the Declarative Order"')
+        new_lines.append("}")
+        greeting_added = True
+        profile_closed = True
+
+    new_lines.append(line)
+
+# Append [include] at the end
+result = "\n".join(new_lines)
+result += "\n\n[include]\nenvironments = [{ remote = " + '"flox/elder-library"' + " }]\n"
+
+with open(path, "w") as f:
+    f.write(result)
+
+status = []
+if initiate_added:
+    status.append("initiate")
+if greeting_added:
+    status.append("greeting")
+status.append("include")
+print(",".join(status))
+PYEOF
+
+  local result
+  result=$(python3 "$pyscript" "$manifest" "$name" 2>&1)
+  rm -f "$pyscript"
+
+  if [[ "$result" == *"initiate"* ]]; then
+    gum style --foreground 46 "  [DONE] Added INITIATE_NAME = \"$name\" to [vars]"
+  fi
+  if [[ "$result" == *"greeting"* ]]; then
+    gum style --foreground 46 "  [DONE] Added dark-greeting() to [profile] common"
+  fi
+  if [[ "$result" == *"include"* ]]; then
+    gum style --foreground 46 "  [DONE] Added [include] with flox/elder-library"
+  fi
+
+  # Mark binding as inscribed (needs re-activate to take effect)
+  echo "$name" > "$cache_path/binding_inscribed"
+
+  echo ""
+  gum style --foreground 214 "The binding is inscribed. Re-activate to seal it:"
+  echo ""
+  echo "  $(gum style --foreground 129 '1.') Exit the current environment:"
+  echo "     $(gum style --foreground 245 'exit')"
+  echo ""
+  echo "  $(gum style --foreground 129 '2.') Re-activate with the new bindings:"
+  echo "     $(gum style --foreground 245 'flox activate')"
+  echo ""
+  echo "  $(gum style --foreground 129 '3.') Verify and validate:"
+  echo "     $(gum style --foreground 245 'dark-greeting')"
+  echo "     $(gum style --foreground 245 'elder-whisper')"
+  echo "     $(gum style --foreground 245 'validate-03')"
+  echo ""
+}
+
+# =============================================================================
+# RITUAL IV: THE TRANSMUTATION (Build)
+# =============================================================================
+
+ritual-04() {
+  echo ""
+  gum style \
+    --border rounded \
+    --border-foreground 129 \
+    --padding "1 2" \
+    "$(gum style --foreground 129 --bold 'RITUAL IV: THE TRANSMUTATION')" \
+    "$(gum style --foreground 245 'Build a reproducible artifact')"
+  echo ""
+
+  gum style --foreground 255 "The Transmutation Forge can create artifacts from source:"
+  echo ""
+  echo "  $(gum style --foreground 129 '1.') Examine the grimoire page source:"
+  echo "     $(gum style --foreground 245 'cat src/grimoire_page.sh')"
+  echo ""
+  echo "  $(gum style --foreground 129 '2.') Examine the build configuration in the manifest:"
+  echo "     $(gum style --foreground 245 'flox edit')  (look for [build.grimoire-page])"
+  echo ""
+  echo "  $(gum style --foreground 129 '3.') Build the grimoire page:"
+  echo "     $(gum style --foreground 245 'flox build grimoire-page')"
+  echo ""
+  echo "  $(gum style --foreground 129 '4.') Run the built artifact:"
+  echo "     $(gum style --foreground 245 './result-grimoire-page/bin/grimoire-page')"
+  echo ""
+  echo "  $(gum style --foreground 129 '5.') Validate the ritual:"
+  echo "     $(gum style --foreground 245 'validate-04')"
+  echo ""
+
+  gum style --foreground 214 "Key concepts:"
+  echo "  - flox build creates reproducible artifacts"
+  echo "  - Build outputs go to result-<name>/ directories"
+  echo "  - The artifact should display your INITIATE_NAME"
+  echo ""
+}
+
+# =============================================================================
+# RITUAL V: THE AWAKENING (Services)
+# =============================================================================
+
+ritual-05() {
+  echo ""
+  gum style \
+    --border rounded \
+    --border-foreground 129 \
+    --padding "1 2" \
+    "$(gum style --foreground 129 --bold 'RITUAL V: THE AWAKENING')" \
+    "$(gum style --foreground 245 'Awaken the Orakle service')"
+  echo ""
+
+  gum style --foreground 255 "The Orakle is defined as a service in the manifest. Awaken it:"
+  echo ""
+  echo "  $(gum style --foreground 129 '1.') Start all services:"
+  echo "     $(gum style --foreground 245 'flox services start')"
+  echo ""
+  echo "  $(gum style --foreground 129 '2.') Check the Orakle health:"
+  echo "     $(gum style --foreground 245 "curl -s http://localhost:\$ORACLE_PORT/health | jq .")"
+  echo ""
+  echo "  $(gum style --foreground 129 '3.') Validate the ritual:"
+  echo "     $(gum style --foreground 245 'validate-05')"
+  echo ""
+
+  gum style --foreground 214 "Tip: You can also start services on activation with:"
+  gum style --foreground 245 "  flox activate --start-services"
+  echo ""
+}
+
+# =============================================================================
+# RITUAL VI: THE ASCENSION (Publish + Push)
+# =============================================================================
+
+ritual-06() {
+  echo ""
+  gum style \
+    --border rounded \
+    --border-foreground 129 \
+    --padding "1 2" \
+    "$(gum style --foreground 129 --bold 'RITUAL VI: THE ASCENSION')" \
+    "$(gum style --foreground 245 'Publish, Push, and Claim Victory')"
+  echo ""
+
+  gum style --foreground 255 "The final ritual. Ascend to the Declarative Order:"
+  echo ""
+  echo "  $(gum style --foreground 129 '1.') Initialize a git repo and push to GitHub:"
+  echo "     $(gum style --foreground 245 'git init && git add -A && git commit -m "dr-flox challenge" && gh repo create dr-flox --public --source=. --push')"
+  echo ""
+  echo "  $(gum style --foreground 129 '2.') Confirm you are authenticated with FloxHub:"
+  echo "     $(gum style --foreground 245 'flox auth status')"
+  echo ""
+  echo "  $(gum style --foreground 129 '3.') Publish your grimoire page as a package:"
+  echo "     $(gum style --foreground 245 'flox publish grimoire-page')"
+  echo ""
+  echo "  $(gum style --foreground 129 '4.') Push your environment to FloxHub:"
+  echo "     $(gum style --foreground 245 'flox push')"
+  echo ""
+  echo "  $(gum style --foreground 129 '5.') Claim your victory (replace with your FloxHub username):"
+  echo "     $(gum style --foreground 245 'claim-victory <your-username>/dr-flox')"
+  echo ""
+  echo "  $(gum style --foreground 129 '6.') Validate the final ritual:"
+  echo "     $(gum style --foreground 245 'validate-06')"
+  echo ""
+
+  gum style --foreground 214 "Prerequisites:"
+  echo "  - All previous rituals must be complete"
+  echo "  - You must be authenticated (flox auth login)"
+  echo "  - GitHub CLI (gh) must be installed and authenticated"
+  echo ""
+}
+
+# =============================================================================
+# INSCRIBE SIGIL
+# =============================================================================
+
+inscribe-sigil() {
+  local PURPLE="\033[0;35m" CYAN="\033[0;36m" GREEN="\033[0;32m"
+  local YELLOW="\033[1;33m" RED="\033[0;31m" NC="\033[0m"
+
+  if ! command -v figlet &>/dev/null; then
+    echo ""
+    echo -e "${RED}\u26e7 THE RITUAL FAILS \u26e7${NC}"
+    echo ""
+    echo "The Mark of ASCII is not present in this realm."
+    echo "The binding cannot proceed without the sacred tool."
+    echo ""
+    echo "  Type 'hint' for guidance, or 'reveal' for the answer."
+    echo ""
+    return 1
+  fi
+
+  local INITIATE="${INITIATE_NAME:-${USER:-unknown}}"
+  local sigil_input="${INITIATE}:${SIGIL_SALT_1}:the-declarative-abyss-awaits"
+  local sigil_hash
+  sigil_hash=$(_compute_sha256 "$sigil_input")
+
+  echo ""
+  echo -e "${PURPLE}\u26e7\u26e7\u26e7 THE INSCRIPTION BEGINS \u26e7\u26e7\u26e7${NC}"
+  echo ""
+  sleep 1
+
+  echo -e "${CYAN}"
+  figlet -f small "$INITIATE" 2>/dev/null || figlet "$INITIATE"
+  echo -e "${NC}"
+
+  sleep 1
+  echo -e "${GREEN}The declarative substrate trembles...${NC}"
+  sleep 1
+  echo -e "${GREEN}Your name echoes through the monorepo...${NC}"
+  sleep 1
+  echo ""
+
+  _pentagram_border
+  echo ""
+  echo -e "  ${YELLOW}\u26e7 YOUR FIRST SIGIL HAS BEEN INSCRIBED \u26e7${NC}"
+  echo ""
+  echo -e "  Initiate: ${CYAN}${INITIATE}${NC}"
+  echo -e "  Sigil:    ${GREEN}${sigil_hash}${NC}"
+  echo ""
+  _pentagram_border
+  echo ""
+  echo "  Now validate the ritual:"
+  echo -e "    ${CYAN}validate-01${NC}"
+  echo ""
+}
+
+# =============================================================================
+# VALIDATE-01: THE SUMMONING
+# =============================================================================
+
+validate-01() {
+  echo ""
+  gum spin --spinner dot --title "Validating Ritual I: The Summoning..." -- sleep 1
+
+  local errors=0
+
+  # Check if this is a local environment (not remote)
+  if [[ -n "${FLOX_ENV_PROJECT:-}" ]] && [[ -d "$FLOX_ENV_PROJECT/.flox" ]]; then
+    gum style --foreground 46 "  [PASS] Running in a local environment"
+  else
+    gum style --foreground 196 "  [FAIL] Not in a local environment"
+    gum style --foreground 245 "         Expected: flox pull --copy flox/dr-flox && flox activate"
+    errors=$((errors + 1))
+  fi
+
+  # Check if figlet is installed IN THIS FLOX ENVIRONMENT
+  if command -v figlet &>/dev/null; then
+    gum style --foreground 46 "  [PASS] figlet is available"
+  else
+    gum style --foreground 196 "  [FAIL] figlet is not installed"
+    gum style --foreground 245 "         Run: flox install figlet"
+    errors=$((errors + 1))
+  fi
+
+  # Compute sigil hash
+  local INITIATE="${INITIATE_NAME:-${USER:-unknown}}"
+  local sigil_input="${INITIATE}:${SIGIL_SALT_1}:the-declarative-abyss-awaits"
+  local sigil_hash
+  sigil_hash=$(_compute_sha256 "$sigil_input")
+
+  echo ""
+  if [[ $errors -eq 0 ]]; then
+    _mark_complete "01_summoning" "$sigil_hash"
+    gum style --foreground 46 --bold "Ritual I Complete! Sigil: $sigil_hash"
+    echo ""
+
+    if _orakle_is_running; then
+      _submit_to_orakle 1 "$sigil_hash"
+    else
+      gum style --foreground 245 "  The Orakle sleeps. Start services later for narrative clues."
+    fi
+
+    echo ""
+    gum style --foreground 245 "Next: Type 'grimoire' and select Ritual II, or run 'ritual-02'"
+  else
+    gum style --foreground 196 "Ritual I not complete. Fix the errors above and try again."
+  fi
+  echo ""
+}
+
+# =============================================================================
+# VALIDATE-02: THE LAYERING
+# =============================================================================
+
+validate-02() {
+  echo ""
+  gum spin --spinner dot --title "Validating Ritual II: The Layering..." -- sleep 1
+
+  local errors=0
+
+  # Check if cowsay is available (from the layered environment)
+  if command -v cowsay &>/dev/null; then
+    gum style --foreground 46 "  [PASS] cowsay is available"
+  else
+    gum style --foreground 196 "  [FAIL] cowsay is not available"
+    gum style --foreground 245 "         Run: flox activate -r flox/elder-library"
+    errors=$((errors + 1))
+  fi
+
+  # Check if fortune is available
+  if command -v fortune &>/dev/null; then
+    gum style --foreground 46 "  [PASS] fortune is available"
+  else
+    gum style --foreground 196 "  [FAIL] fortune is not available"
+    errors=$((errors + 1))
+  fi
+
+  # Check if lolcat is available
+  if command -v lolcat &>/dev/null; then
+    gum style --foreground 46 "  [PASS] lolcat is available"
+  else
+    gum style --foreground 196 "  [FAIL] lolcat is not available"
+    errors=$((errors + 1))
+  fi
+
+  # Compute sigil hash
+  local INITIATE="${INITIATE_NAME:-${USER:-unknown}}"
+  local sigil_input="${INITIATE}:${SIGIL_SALT_2}:realms-layered-and-bound"
+  local sigil_hash
+  sigil_hash=$(_compute_sha256 "$sigil_input")
+
+  echo ""
+  if [[ $errors -eq 0 ]]; then
+    _mark_complete "02_layering" "$sigil_hash"
+    gum style --foreground 46 --bold "Ritual II Complete! Sigil: $sigil_hash"
+    echo ""
+
+    # Show a reward
+    fortune | cowsay 2>/dev/null || echo "The Elder Libraries acknowledge you."
+    echo ""
+
+    if _orakle_is_running; then
+      _submit_to_orakle 2 "$sigil_hash"
+    else
+      gum style --foreground 245 "  The Orakle sleeps. Start services later for narrative clues."
+    fi
+
+    echo ""
+    echo ""
+    gum style --foreground 245 "Next: Exit this layer, then run 'grimoire' for Ritual III"
+    echo "     $(gum style --foreground 245 'exit')"
+    echo "     $(gum style --foreground 245 'grimoire')"
+  else
+    gum style --foreground 196 "Ritual II not complete. Fix the errors above and try again."
+  fi
+  echo ""
+}
+
+# =============================================================================
+# VALIDATE-03: THE BINDING
+# =============================================================================
+
+validate-03() {
+  echo ""
+  gum spin --spinner dot --title "Validating Ritual III: The Binding..." -- sleep 1
+
+  local errors=0
+  local manifest="${FLOX_ENV_PROJECT:-.}/.flox/env/manifest.toml"
+
+  # Check if manifest has [include] section
+  if grep -q "\[include\]" "$manifest" 2>/dev/null; then
+    gum style --foreground 46 "  [PASS] [include] section found in manifest"
+  else
+    gum style --foreground 196 "  [FAIL] [include] section not found in manifest"
+    gum style --foreground 245 "         Run: flox edit and add [include] section"
+    errors=$((errors + 1))
+  fi
+
+  # Check if cowsay is available without -r flag
+  if command -v cowsay &>/dev/null; then
+    gum style --foreground 46 "  [PASS] cowsay available via composition (no -r needed)"
+  else
+    gum style --foreground 196 "  [FAIL] cowsay not available"
+    gum style --foreground 245 "         Make sure [include] references flox/elder-library"
+    errors=$((errors + 1))
+  fi
+
+  # Check if INITIATE_NAME is set
+  if [[ -n "${INITIATE_NAME:-}" ]]; then
+    gum style --foreground 46 "  [PASS] INITIATE_NAME is set: $INITIATE_NAME"
+  else
+    gum style --foreground 196 "  [FAIL] INITIATE_NAME is not set"
+    gum style --foreground 245 "         Add INITIATE_NAME = \"your-name\" to [vars] in manifest"
+    errors=$((errors + 1))
+  fi
+
+  # Check if dark-greeting function exists
+  if declare -f dark-greeting &>/dev/null; then
+    gum style --foreground 46 "  [PASS] dark-greeting function exists"
+  else
+    gum style --foreground 196 "  [FAIL] dark-greeting function not found"
+    gum style --foreground 245 "         Add dark-greeting() to [profile] common in manifest"
+    errors=$((errors + 1))
+  fi
+
+  # Compute sigil hash
+  local INITIATE="${INITIATE_NAME:-${USER:-unknown}}"
+  local sigil_input="${INITIATE}:${SIGIL_SALT_3}:permanently-woven"
+  local sigil_hash
+  sigil_hash=$(_compute_sha256 "$sigil_input")
+
+  echo ""
+  if [[ $errors -eq 0 ]]; then
+    _mark_complete "03_binding" "$sigil_hash"
+    gum style --foreground 46 --bold "Ritual III Complete! Sigil: $sigil_hash"
+    echo ""
+
+    if _orakle_is_running; then
+      _submit_to_orakle 3 "$sigil_hash"
+    else
+      gum style --foreground 245 "  The Orakle sleeps. Start services later for narrative clues."
+    fi
+
+    echo ""
+    gum style --foreground 245 "Next: Type 'grimoire' and select Ritual IV, or run 'ritual-04'"
+  else
+    gum style --foreground 196 "Ritual III not complete. Fix the errors above and try again."
+  fi
+  echo ""
+}
+
+# =============================================================================
+# VALIDATE-04: THE TRANSMUTATION
+# =============================================================================
+
+validate-04() {
+  echo ""
+  gum spin --spinner dot --title "Validating Ritual IV: The Transmutation..." -- sleep 1
+
+  local errors=0
+
+  # Check if result-grimoire-page directory exists
+  if [[ -d "$FLOX_ENV_PROJECT/result-grimoire-page" ]] || [[ -L "$FLOX_ENV_PROJECT/result-grimoire-page" ]]; then
+    gum style --foreground 46 "  [PASS] result-grimoire-page exists"
+  else
+    gum style --foreground 196 "  [FAIL] result-grimoire-page not found"
+    gum style --foreground 245 "         Run: flox build grimoire-page"
+    errors=$((errors + 1))
+  fi
+
+  # Check if built binary exists and is executable
+  if [[ -x "$FLOX_ENV_PROJECT/result-grimoire-page/bin/grimoire-page" ]]; then
+    gum style --foreground 46 "  [PASS] grimoire-page binary exists and is executable"
+  else
+    gum style --foreground 196 "  [FAIL] grimoire-page binary not found or not executable"
+    gum style --foreground 245 "         Run: flox build grimoire-page"
+    errors=$((errors + 1))
+  fi
+
+  # Check if output includes initiate name
+  if [[ -x "$FLOX_ENV_PROJECT/result-grimoire-page/bin/grimoire-page" ]]; then
+    local output
+    output=$("$FLOX_ENV_PROJECT/result-grimoire-page/bin/grimoire-page" 2>/dev/null)
+    local INITIATE="${INITIATE_NAME:-UNNAMED_INITIATE}"
+    if echo "$output" | grep -q "$INITIATE"; then
+      gum style --foreground 46 "  [PASS] Output includes initiate name: $INITIATE"
+    else
+      gum style --foreground 196 "  [FAIL] Output does not include initiate name"
+      gum style --foreground 245 "         Make sure INITIATE_NAME is set in [vars]"
+      errors=$((errors + 1))
+    fi
+  fi
+
+  # Compute sigil hash
+  local INITIATE="${INITIATE_NAME:-${USER:-unknown}}"
+  local sigil_input="${INITIATE}:${SIGIL_SALT_4}:artifacts-manifested"
+  local sigil_hash
+  sigil_hash=$(_compute_sha256 "$sigil_input")
+
+  echo ""
+  if [[ $errors -eq 0 ]]; then
+    _mark_complete "04_transmutation" "$sigil_hash"
+    gum style --foreground 46 --bold "Ritual IV Complete! Sigil: $sigil_hash"
+    echo ""
+
+    # Show the built output
+    echo ""
+    gum style --foreground 245 "  Your grimoire page:"
+    "$FLOX_ENV_PROJECT/result-grimoire-page/bin/grimoire-page" 2>/dev/null
+    echo ""
+
+    if _orakle_is_running; then
+      _submit_to_orakle 4 "$sigil_hash"
+    else
+      gum style --foreground 245 "  The Orakle sleeps. Start services later for narrative clues."
+    fi
+
+    echo ""
+    gum style --foreground 245 "Next: Type 'grimoire' and select Ritual V, or run 'ritual-05'"
+  else
+    gum style --foreground 196 "Ritual IV not complete. Fix the errors above and try again."
+  fi
+  echo ""
+}
+
+# =============================================================================
+# VALIDATE-05: THE AWAKENING
+# =============================================================================
+
+validate-05() {
+  echo ""
+  gum spin --spinner dot --title "Validating Ritual V: The Awakening..." -- sleep 1
+
+  local errors=0
+  local port="${ORACLE_PORT:-8666}"
+
+  # Check if orakle service is responding (retry up to 5 times)
+  local health_response=""
+  local attempt
+  for attempt in 1 2 3 4 5; do
+    health_response=$(curl -s "http://localhost:$port/health" 2>/dev/null)
+    if echo "$health_response" | jq -e '.status == "alive"' &>/dev/null; then
+      break
+    fi
+    if [[ $attempt -lt 5 ]]; then
+      sleep 1
+    fi
+  done
+
+  if echo "$health_response" | jq -e '.status == "alive"' &>/dev/null; then
+    gum style --foreground 46 "  [PASS] Orakle service is running and alive"
+  else
+    gum style --foreground 196 "  [FAIL] Orakle service is not responding"
+    gum style --foreground 245 "         Run: flox services start"
+    errors=$((errors + 1))
+  fi
+
+  # Compute sigil hash
+  local INITIATE="${INITIATE_NAME:-${USER:-unknown}}"
+  local sigil_input="${INITIATE}:${SIGIL_SALT_5}:services-awakened"
+  local sigil_hash
+  sigil_hash=$(_compute_sha256 "$sigil_input")
+
+  echo ""
+  if [[ $errors -eq 0 ]]; then
+    _mark_complete "05_awakening" "$sigil_hash"
+    gum style --foreground 46 --bold "Ritual V Complete! Sigil: $sigil_hash"
+    echo ""
+
+    # Show health response
+    gum style --foreground 245 "  Orakle says:"
+    echo "$health_response" | jq . 2>/dev/null | sed 's/^/    /'
+    echo ""
+
+    # Auto-submit all previous sigils so the Orakle has the full record.
+    # Recompute sigils with current INITIATE_NAME (not stored hashes, which
+    # may have been computed with $USER before INITIATE_NAME was set).
+    local _sync_user _sync_sigil _sync_salt _sync_suffix _sync_num
+    _sync_user="${INITIATE_NAME:-${USER:-unknown}}"
+    for _sync_num in 1 2 3 4; do
+      eval "_sync_salt=\$SIGIL_SALT_${_sync_num}"
+      case $_sync_num in
+        1) _sync_suffix="the-declarative-abyss-awaits" ;;
+        2) _sync_suffix="realms-layered-and-bound" ;;
+        3) _sync_suffix="permanently-woven" ;;
+        4) _sync_suffix="artifacts-manifested" ;;
+      esac
+      _sync_sigil=$(_compute_sha256 "${_sync_user}:${_sync_salt}:${_sync_suffix}")
+      _submit_to_orakle "$_sync_num" "$_sync_sigil" &>/dev/null
+    done
+    gum style --foreground 245 "  Previous sigils synced to the Orakle."
+
+    _submit_to_orakle 5 "$sigil_hash"
+
+    echo ""
+    gum style --foreground 245 "Next: Type 'grimoire' and select Ritual VI, or run 'ritual-06'"
+  else
+    gum style --foreground 196 "Ritual V not complete. Fix the errors above and try again."
+  fi
+  echo ""
+}
+
+# =============================================================================
+# VALIDATE-06: THE ASCENSION
+# =============================================================================
+
+validate-06() {
+  echo ""
+  gum spin --spinner dot --title "Validating Ritual VI: The Ascension..." -- sleep 1
+
+  local errors=0
+
+  # Check if user is authenticated
+  if flox auth status 2>&1 | grep -qi "logged in"; then
+    gum style --foreground 46 "  [PASS] Authenticated with FloxHub"
+  else
+    gum style --foreground 196 "  [FAIL] Not authenticated with FloxHub"
+    gum style --foreground 245 "         Run: flox auth login"
+    errors=$((errors + 1))
+  fi
+
+  # Check all previous rituals are complete
+  local prev_rituals=("01_summoning" "02_layering" "03_binding" "04_transmutation" "05_awakening")
+  for r in "${prev_rituals[@]}"; do
+    if _is_complete "$r"; then
+      gum style --foreground 46 "  [PASS] $r complete"
+    else
+      gum style --foreground 196 "  [FAIL] $r not complete"
+      errors=$((errors + 1))
+    fi
+  done
+
+  # Compute sigil hash
+  local INITIATE="${INITIATE_NAME:-${USER:-unknown}}"
+  local sigil_input="${INITIATE}:${SIGIL_SALT_6}:mastery-achieved"
+  local sigil_hash
+  sigil_hash=$(_compute_sha256 "$sigil_input")
+
+  echo ""
+  if [[ $errors -eq 0 ]]; then
+    _mark_complete "06_ascension" "$sigil_hash"
+
+    # Mark completion time
+    local cache_path
+    cache_path=$(_get_progress_cache)
+    if [[ -f "$cache_path/progress.json" ]] && command -v jq &>/dev/null; then
+      local tmp completed_at
+      completed_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+      tmp=$(mktemp)
+      jq --arg t "$completed_at" '.completed_at = $t' "$cache_path/progress.json" > "$tmp" && \
+        mv "$tmp" "$cache_path/progress.json"
+    fi
+
+    gum style --foreground 46 --bold "Ritual VI Complete! Sigil: $sigil_hash"
+    echo ""
+
+    if _orakle_is_running; then
+      _submit_to_orakle 6 "$sigil_hash"
+
+      # Request certificate
+      local cert_response
+      cert_response=$(curl -s -X POST "$(_orakle_url)/complete" \
+        -H "Content-Type: application/json" \
+        -d "{\"user\": \"${INITIATE_NAME:-${USER:-unknown}}\"}" 2>/dev/null)
+      if [[ -n "$cert_response" ]]; then
+        local cert
+        cert=$(echo "$cert_response" | jq -r '.certificate // ""' 2>/dev/null)
+        if [[ -n "$cert" ]]; then
+          echo -e "$cert"
+        fi
+      fi
+    else
+      gum style --foreground 245 "  The Orakle sleeps. Start services to receive your certificate."
+      gum style --foreground 245 "  Run: flox services start && claim-victory"
+    fi
+
+    echo ""
+    gum style \
+      --border double \
+      --border-foreground 46 \
+      --padding "1 2" \
+      "$(gum style --foreground 46 --bold 'ALL RITUALS COMPLETE!')" \
+      "" \
+      "You have mastered:" \
+      "  - Package installation (pull + install)" \
+      "  - Environment layering (runtime)" \
+      "  - Environment composition (build-time)" \
+      "  - Building reproducible artifacts" \
+      "  - Service management" \
+      "  - Publishing and sharing" \
+      "" \
+      "$(gum style --foreground 129 'The Declarative Order recognizes you.')"
+    echo ""
+  else
+    gum style --foreground 196 "Ritual VI not complete. Fix the errors above and try again."
+  fi
+  echo ""
+}
+
+# =============================================================================
+# ORAKLE HELPERS
+# =============================================================================
+
+submit-sigil() {
+  local sigil="${1:-}"
+  local ritual="${2:-}"
+
+  if [[ -z "$sigil" ]] || [[ -z "$ritual" ]]; then
+    echo ""
+    gum style --foreground 214 "Usage: submit-sigil <sigil-hash> <ritual-number>"
+    gum style --foreground 245 "  Example: submit-sigil abc123def4567890 1"
+    echo ""
+    return 1
+  fi
+
+  if ! _orakle_is_running; then
+    gum style --foreground 196 "The Orakle sleeps. Awaken it first:"
+    gum style --foreground 245 "  flox services start"
+    return 1
+  fi
+
+  echo ""
+  gum spin --spinner dot --title "Consulting the Orakle..." -- sleep 1
+  _submit_to_orakle "$ritual" "$sigil"
+  echo ""
+}
+
+claim-victory() {
+  local env_ref="${1:-}"
+
+  # Check local progress first
+  local missing_local=()
+  local ritual_keys=("01_summoning" "02_layering" "03_binding" "04_transmutation" "05_awakening" "06_ascension")
+  for rk in "${ritual_keys[@]}"; do
+    if ! _is_complete "$rk"; then
+      missing_local+=("$rk")
+    fi
+  done
+  if [[ ${#missing_local[@]} -gt 0 ]]; then
+    echo ""
+    gum style --foreground 196 "  Not all rituals are complete locally."
+    gum style --foreground 245 "  Missing: ${missing_local[*]}"
+    echo ""
+    gum style --foreground 245 "  Run validate-06 after completing all prior rituals."
+    echo ""
+    return 1
+  fi
+
+  if ! _orakle_is_running; then
+    gum style --foreground 196 "The Orakle sleeps. Awaken it first:"
+    gum style --foreground 245 "  flox services start"
+    return 1
+  fi
+
+  echo ""
+  gum spin --spinner dot --title "The Orakle judges your worthiness..." -- sleep 2
+
+  # Sync all 6 sigils to the Orakle (recompute to handle service restarts)
+  local user="${INITIATE_NAME:-${USER:-unknown}}"
+  local _cv_salt _cv_suffix _cv_sigil _cv_num
+  for _cv_num in 1 2 3 4 5 6; do
+    eval "_cv_salt=\$SIGIL_SALT_${_cv_num}"
+    case $_cv_num in
+      1) _cv_suffix="the-declarative-abyss-awaits" ;;
+      2) _cv_suffix="realms-layered-and-bound" ;;
+      3) _cv_suffix="permanently-woven" ;;
+      4) _cv_suffix="artifacts-manifested" ;;
+      5) _cv_suffix="services-awakened" ;;
+      6) _cv_suffix="mastery-achieved" ;;
+    esac
+    _cv_sigil=$(_compute_sha256 "${user}:${_cv_salt}:${_cv_suffix}")
+    _submit_to_orakle "$_cv_num" "$_cv_sigil" &>/dev/null
+  done
+
+  # Get FloxHub username for token
+  local floxhub_user=""
+  if command -v flox &>/dev/null; then
+    floxhub_user=$(flox auth status 2>&1 | grep -oE 'Logged in as [^ ]+' | sed 's/Logged in as //' || true)
+  fi
+
+  local response
+  response=$(curl -s -X POST "$(_orakle_url)/complete" \
+    -H "Content-Type: application/json" \
+    -d "{\"user\": \"$user\", \"env_ref\": \"$env_ref\", \"floxhub_user\": \"$floxhub_user\"}" 2>/dev/null)
+
+  if [[ -n "$response" ]]; then
+    local success
+    success=$(echo "$response" | jq -r '.success // false' 2>/dev/null)
+    if [[ "$success" == "true" ]]; then
+      local cert
+      cert=$(echo "$response" | jq -r '.certificate // ""' 2>/dev/null)
+      if [[ -n "$cert" ]]; then
+        echo -e "$cert"
+      fi
+      # Display completion token
+      local token
+      token=$(echo "$response" | jq -r '.token // ""' 2>/dev/null)
+      if [[ -n "$token" ]]; then
+        echo ""
+        gum style \
+          --border double \
+          --border-foreground 46 \
+          --padding "1 2" \
+          "$(gum style --foreground 46 --bold 'COMPLETION TOKEN')" \
+          "$(gum style --foreground 245 'Email this to drflox@flox.dev to verify:')" \
+          "" \
+          "$token"
+        echo ""
+      fi
+    else
+      local err
+      err=$(echo "$response" | jq -r '.error // "Unknown error"' 2>/dev/null)
+      gum style --foreground 196 "  The Orakle rejects your claim: $err"
+    fi
+  else
+    gum style --foreground 196 "  Failed to reach the Orakle"
+  fi
+  echo ""
+}
+
+orakle-health() {
+  if ! _orakle_is_running; then
+    gum style --foreground 196 "The Orakle sleeps."
+    gum style --foreground 245 "  Run: flox services start"
+    return 1
+  fi
+  echo ""
+  gum style --foreground 129 "Orakle Status:"
+  curl -s "$(_orakle_url)/health" | jq . 2>/dev/null | sed 's/^/  /'
+  echo ""
+}
+
+# =============================================================================
+# HINTS - Context-aware based on progress
+# =============================================================================
+
+hint() {
+  local CYAN="\033[0;36m" YELLOW="\033[1;33m" NC="\033[0m"
+  echo ""
+  echo -e "${YELLOW}\u26e7 A WHISPER FROM THE VOID \u26e7${NC}"
+  echo ""
+
+  if ! _is_complete "01_summoning"; then
+    echo "  The sacred tool renders text in monumental form."
+    echo "  Search the catalog for that which makes letters... larger."
+    echo ""
+    echo -e "  The ancient texts: ${CYAN}https://flox.dev/docs/install-packages/${NC}"
+  elif ! _is_complete "02_layering"; then
+    echo "  The Elder Libraries exist in a separate realm."
+    echo "  Layer them upon your environment at runtime."
+    echo ""
+    echo -e "  The incantation uses ${CYAN}-r${NC} to summon a remote layer."
+    echo -e "  The realm is called ${CYAN}flox/elder-library${NC}."
+  elif ! _is_complete "03_binding"; then
+    echo "  Runtime layering is ephemeral. To make it permanent..."
+    echo "  Edit the manifest and add an [include] section."
+    echo ""
+    echo -e "  Also add your name as ${CYAN}INITIATE_NAME${NC} in [vars]."
+    echo -e "  And define ${CYAN}dark-greeting()${NC} in [profile]."
+  elif ! _is_complete "04_transmutation"; then
+    echo "  The grimoire page source awaits transmutation."
+    echo "  The build configuration is already in the manifest."
+    echo ""
+    echo -e "  Use ${CYAN}flox build grimoire-page${NC} to forge the artifact."
+  elif ! _is_complete "05_awakening"; then
+    echo "  The Orakle is defined as a service in the manifest."
+    echo "  It waits to be awakened."
+    echo ""
+    echo -e "  Use ${CYAN}flox services start${NC} to bring it to life."
+  elif ! _is_complete "06_ascension"; then
+    echo "  The final step: publish and push."
+    echo "  Share your work with the world."
+    echo ""
+    echo -e "  Use ${CYAN}flox publish${NC} and ${CYAN}flox push${NC}."
+    echo -e "  Then ${CYAN}claim-victory${NC} to receive your certificate."
+  else
+    echo "  All rituals are complete. You are an Adept."
+    echo "  Run 'claim-victory' if you haven't received your certificate."
+  fi
+  echo ""
+}
+
+reveal() {
+  local CYAN="\033[0;36m" GREEN="\033[0;32m" NC="\033[0m"
+  echo ""
+  echo -e "${GREEN}\u26e7 THE PATH IS ILLUMINATED \u26e7${NC}"
+  echo ""
+
+  if ! _is_complete "01_summoning"; then
+    echo -e "  ${CYAN}flox install figlet${NC}"
+    echo -e "  ${CYAN}inscribe-sigil${NC}"
+    echo -e "  ${CYAN}validate-01${NC}"
+  elif ! _is_complete "02_layering"; then
+    echo -e "  ${CYAN}flox activate -r flox/elder-library${NC}"
+    echo -e "  ${CYAN}elder-whisper${NC}"
+    echo -e "  ${CYAN}validate-02${NC}"
+  elif ! _is_complete "03_binding"; then
+    echo -e "  ${CYAN}ritual-03${NC}  (will prompt for your name and bind automatically)"
+    echo -e "  ${CYAN}exit${NC}"
+    echo -e "  ${CYAN}flox activate${NC}"
+    echo -e "  ${CYAN}validate-03${NC}"
+  elif ! _is_complete "04_transmutation"; then
+    echo -e "  ${CYAN}flox build grimoire-page${NC}"
+    echo -e "  ${CYAN}./result-grimoire-page/bin/grimoire-page${NC}"
+    echo -e "  ${CYAN}validate-04${NC}"
+  elif ! _is_complete "05_awakening"; then
+    echo -e "  ${CYAN}flox services start${NC}"
+    echo -e "  ${CYAN}curl -s http://localhost:\$ORACLE_PORT/health | jq .${NC}"
+    echo -e "  ${CYAN}validate-05${NC}"
+  elif ! _is_complete "06_ascension"; then
+    echo -e "  ${CYAN}flox auth status${NC}  (login if needed: flox auth login)"
+    echo -e "  ${CYAN}flox publish grimoire-page${NC}"
+    echo -e "  ${CYAN}flox push${NC}"
+    echo -e "  ${CYAN}claim-victory <your-username>/dr-flox${NC}"
+    echo -e "  ${CYAN}validate-06${NC}"
+  else
+    echo "  All rituals complete! Run 'claim-victory' for your certificate."
+  fi
+  echo ""
+}
+
+# =============================================================================
+# WELCOME MESSAGE ON ACTIVATION
+# =============================================================================
+
+_next_ritual_name() {
+  if ! _is_complete "01_summoning"; then echo "Ritual I: The Summoning"
+  elif ! _is_complete "02_layering"; then echo "Ritual II: The Layering"
+  elif ! _is_complete "03_binding"; then echo "Ritual III: The Binding"
+  elif ! _is_complete "04_transmutation"; then echo "Ritual IV: The Transmutation"
+  elif ! _is_complete "05_awakening"; then echo "Ritual V: The Awakening"
+  elif ! _is_complete "06_ascension"; then echo "Ritual VI: The Ascension"
+  else echo "All rituals complete!"
+  fi
+}
+
+_next_ritual_cmd() {
+  if ! _is_complete "01_summoning"; then echo "ritual-01"
+  elif ! _is_complete "02_layering"; then echo "ritual-02"
+  elif ! _is_complete "03_binding"; then echo "ritual-03"
+  elif ! _is_complete "04_transmutation"; then echo "ritual-04"
+  elif ! _is_complete "05_awakening"; then echo "ritual-05"
+  elif ! _is_complete "06_ascension"; then echo "ritual-06"
+  else echo "claim-victory"
+  fi
+}
+
+# Check if ritual-03 binding was inscribed but not yet validated (needs re-activate)
+_binding_needs_reactivate() {
+  local cache_path
+  cache_path=$(_get_progress_cache)
+  [[ -f "$cache_path/binding_inscribed" ]] && ! _is_complete "03_binding"
+}
+
+if [[ -n "${_DRFLOX_WELCOME_SHOWN:-}" ]]; then
+  : # Skip welcome on layered or re-entrant activation
+elif _is_complete "01_summoning"; then
+  export _DRFLOX_WELCOME_SHOWN=1
+  local completed
+  completed=$(_get_completed_count)
+  echo ""
+  grimoire-banner
+  echo ""
+  if _binding_needs_reactivate; then
+    gum style --foreground 46 "  The binding was inscribed! Now validate:"
+    echo "     $(gum style --foreground 245 'dark-greeting')"
+    echo "     $(gum style --foreground 245 'elder-whisper')"
+    echo "     $(gum style --foreground 245 'validate-03')"
+  else
+    local next_name next_cmd
+    next_name=$(_next_ritual_name)
+    next_cmd=$(_next_ritual_cmd)
+    gum style --foreground 245 "  Next: $next_name"
+    echo "     $(gum style --foreground 129 "$next_cmd")  or  $(gum style --foreground 129 'grimoire')"
+  fi
+  echo ""
+else
+  export _DRFLOX_WELCOME_SHOWN=1
+  echo ""
+  _pentagram_border
+  echo ""
+  echo "       THE BINDING CIRCLE IS INCOMPLETE"
+  echo ""
+  echo "  The sigil cannot be inscribed without the"
+  echo "  MARK OF ASCII."
+  echo ""
+  echo "    \"That which renders text... MONUMENTAL\""
+  echo ""
+  echo "  Once acquired, invoke:  inscribe-sigil"
+  echo ""
+  echo "  Lost? Type 'hint' or 'reveal'"
+  echo ""
+  _pentagram_border
+  echo ""
+fi
+
+dark-greeting() {
+  echo "The shadows welcome $INITIATE_NAME to the Declarative Order"
+}
+'''
+
+#
+# =============================================================================
+# SERVICES SECTION
+# =============================================================================
+#
+
+[services.orakle]
+command = "python3 $FLOX_ENV_CACHE/orakle_service.py --port $ORACLE_PORT"
+
+#
+# =============================================================================
+# BUILD SECTION
+# =============================================================================
+# Pre-configured build for Ritual IV - users run 'flox build grimoire-page'
+#
+
+[build.grimoire-page]
+sandbox = "off"
+command = """
+  mkdir -p $out/bin
+  cp $FLOX_ENV_PROJECT/src/grimoire_page.sh $out/bin/grimoire-page
+  chmod +x $out/bin/grimoire-page
+"""
+
+#
+# =============================================================================
+# OPTIONS SECTION
+# =============================================================================
+#
+
+[options]
+systems = ["aarch64-darwin", "aarch64-linux", "x86_64-darwin", "x86_64-linux"]
+
+
+[include]
+environments = [{ remote = "flox/elder-library" }]
