@@ -84,9 +84,8 @@ fi
 # Create cache directory if needed
 mkdir -p "$FLOX_ENV_CACHE"
 
-# Create Orakle service script (idempotent)
-if [[ ! -f "$FLOX_ENV_CACHE/orakle_service.py" ]]; then
-  cat > "$FLOX_ENV_CACHE/orakle_service.py" << 'ORACLE_EOF'
+# Create/update Orakle service script (always overwrite to pick up changes)
+cat > "$FLOX_ENV_CACHE/orakle_service.py" << 'ORACLE_EOF'
 #!/usr/bin/env python3
 """Dr. Flox Challenge - The Sigil Orakle
 A dark and ancient service that validates ritual sigils and guards the path to mastery."""
@@ -329,7 +328,6 @@ if __name__ == "__main__":
     print(f"  Listening on http://localhost:{args.port}\n")
     HTTPServer(("127.0.0.1", args.port), OrakleHandler).serve_forever()
 ORACLE_EOF
-fi
 
 # Create progress tracking file (idempotent)
 if [[ ! -f "$FLOX_ENV_CACHE/progress.json" ]]; then
@@ -461,16 +459,16 @@ _submit_to_orakle() {
     -d "{\"sigil\": \"$sigil\", \"ritual\": $ritual, \"user\": \"$user\"}" 2>/dev/null)
   if [[ -n "$response" ]]; then
     local valid
-    valid=$(echo "$response" | jq -r '.valid // false' 2>/dev/null)
+    valid=$(printf '%s\n' "$response" | jq -r '.valid // false' 2>/dev/null)
     if [[ "$valid" == "true" ]]; then
       local clue
-      clue=$(echo "$response" | jq -r '.clue // ""' 2>/dev/null)
+      clue=$(printf '%s\n' "$response" | jq -r '.clue // ""' 2>/dev/null)
       if [[ -n "$clue" ]]; then
         echo -e "$clue"
       fi
     else
       local err
-      err=$(echo "$response" | jq -r '.error // "Unknown error"' 2>/dev/null)
+      err=$(printf '%s\n' "$response" | jq -r '.error // "Unknown error"' 2>/dev/null)
       gum style --foreground 196 "  Orakle: $err"
     fi
   fi
@@ -855,6 +853,7 @@ ritual-04() {
   echo ""
   echo "  $(gum style --foreground 129 '4.') Run the built artifact:"
   echo "     $(gum style --foreground 245 './result-grimoire-page/bin/grimoire-page')"
+  echo "     $(gum style --foreground 245 '# (the build output is a directory — the binary is inside bin/)')"
   echo ""
   echo "  $(gum style --foreground 129 '5.') Validate the ritual:"
   echo "     $(gum style --foreground 245 'validate-04')"
